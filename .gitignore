@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+*.swp
+*~
+
+# 运行产物与本地数据
+# data/ 存放每日采集的历史序列、期权链快照与接口缓存，随运行持续变化；
+# output/ 存放由 build_html.py 生成的页面，属构建产物。
+data/
+output/
+*.log
+
+# Skill 安装标记（本地状态，非 skill 内容）
+_skillhub_meta.json
+.redskill-installed
