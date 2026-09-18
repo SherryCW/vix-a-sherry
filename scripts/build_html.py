@@ -74,7 +74,7 @@ def term_svg(terms, color):
             f'stroke-linecap="round" stroke-linejoin="round"/>{dots}{vals}{labels}</svg>')
 
 
-def card(res, pct=None, rvpct=None):
+def card(res, pct=None, rvpct=None, qhrb=None):
     color = vix_color(res["vix"])
     label = sentiment(res["vix"])
     rv = res.get("rv20")
@@ -100,6 +100,15 @@ def card(res, pct=None, rvpct=None):
                     f'<span class="pctnote">2015年至今 · 华创金工 HCVIX</span></div>'
                     f'<div class="pcttrack"><div class="pctfill" style="width:{max(pct, 1.5):.1f}%;'
                     f'background:{color}"></div></div>')
+    elif qhrb is not None:
+        qp = qhrb["pct"]
+        qc = ("#f87171" if qp >= 80 else "#fb923c" if qp >= 65
+              else "#fbbf24" if qp >= 40 else "#34d399")
+        pct_row += (f'<div class="pctbar"><span class="pctlabel">近半年位置</span>'
+                    f'<b class="pctval">{qp:.0f}%</b>'
+                    f'<span class="pctnote">近半年 · 期货日报加权IV</span></div>'
+                    f'<div class="pcttrack"><div class="pctfill" style="width:{max(qp, 1.5):.1f}%;'
+                    f'background:{qc}"></div></div>')
     if rvpct is not None:
         pct_row += (f'<div class="pctbar"><span class="pctlabel">波动水平</span>'
                     f'<b class="pctval">{rvpct:.1f}%</b>'
@@ -132,62 +141,50 @@ def card(res, pct=None, rvpct=None):
 </article>'''
 
 
-def build_qhrb_html():
-    """
-    期货日报「加权隐含波动率」的近期历史位置。
+QHRB_MAP = {"500ETF": "510500", "KCB50": "588000", "CYB": "159915"}
 
-    为什么单独成块：这是第三方序列，口径与本 skill 自算的方差互换 VIX 不同，
-    只用于判断「当前波动水平在近半年的相对位置」，不可与上方数值直接比较。
+
+def load_qhrb():
+    """
+    期货日报「加权隐含波动率」的历史位置，按标的代码返回。
+
+    这是第三方序列，口径与本 skill 自算的方差互换 VIX 不同（按成交加权、
+    以平值合约为主，数值系统性偏高），只用于判断「当前波动水平在近半年
+    的相对位置」。渲染时用独立标签与来源说明区分，不与 VIX 数值并列比较。
+
+    返回 {标的代码: {"pct", "cur", "lo", "hi", "n", "date"}}
     """
     import csv as _csv
     path = os.path.join(DATA_DIR, "qhrb_iv_history.csv")
     if not os.path.exists(path):
-        return ""
+        return {}
     with open(path, encoding="utf-8") as f:
         rows = list(_csv.DictReader(f))
     if not rows:
-        return ""
+        return {}
 
-    names = {"500ETF": "中证500ETF", "KCB50": "科创50ETF", "CYB": "创业板ETF"}
-    items = []
-    for k, nm in names.items():
-        vals = [(r["date"], float(r[k])) for r in rows if r.get(k)]
+    out = {}
+    for key, code in QHRB_MAP.items():
+        vals = [(r["date"], float(r[key])) for r in rows if r.get(key)]
         if len(vals) < 4:
             continue
-        cur_date, cur = vals[-1]
+        d, cur = vals[-1]
         arr = [v for _, v in vals]
-        lo, hi = min(arr), max(arr)
         below = sum(1 for v in arr if v < cur)
-        pct = below / (len(arr) - 1) * 100 if len(arr) > 1 else 50.0
-        color = ("#f87171" if pct >= 80 else "#fb923c" if pct >= 65
-                 else "#fbbf24" if pct >= 40 else "#34d399")
-        items.append(
-            f'<div class="qrow">\n'
-            f'      <div class="qhead">'
-            f'<span class="qname">{nm}</span>'
-            f'<b class="qval" style="color:{color}">{cur*100:.2f}%</b>'
-            f'<span class="qpct">{pct:.0f}% 分位</span></div>\n'
-            f'      <div class="qtrack"><div class="qfill" '
-            f'style="width:{max(pct, 2):.1f}%;background:{color}"></div></div>\n'
-            f'      <div class="qrange">近半年 {lo*100:.2f}% ~ {hi*100:.2f}%'
-            f'　·　{len(arr)} 个观测　·　最新 {cur_date}</div>\n'
-            f'    </div>')
-
-    if not items:
-        return ""
-    return ('<section class="qsec">\n'
-            '    <div class="qh2">近半年历史位置</div>\n'
-            '    <p class="qnote">数据来自「期货日报」每周公布的品种加权隐含波动率。'
-            '<b>口径与上方 VIX 不同</b>——加权 IV 按成交加权、以平值合约为主，'
-            '数值系统性偏高，只用于判断当前波动水平在近半年的相对位置，'
-            '不可与上方数值直接比较。</p>\n    '
-            + "\n    ".join(items) + "\n  </section>")
+        out[code] = {
+            "pct": below / (len(arr) - 1) * 100 if len(arr) > 1 else 50.0,
+            "cur": cur, "lo": min(arr), "hi": max(arr),
+            "n": len(arr), "date": d,
+        }
+    return out
 
 
-def build(results, data_date, stale_note=None, pcts=None, rvpcts=None, qhrb_html=""):
+def build(results, data_date, stale_note=None, pcts=None, rvpcts=None, qhrb=None):
     pcts = pcts or {}
     rvpcts = rvpcts or {}
-    cards = "\n".join(card(r, pcts.get(r["underlying"]), rvpcts.get(r["underlying"]))
+    qhrb = qhrb or {}
+    cards = "\n".join(card(r, pcts.get(r["underlying"]), rvpcts.get(r["underlying"]),
+                           qhrb.get(r["code"]))
                       for r in results)
     top = max(results, key=lambda r: r["vix"])
     low = min(results, key=lambda r: r["vix"])
@@ -289,14 +286,14 @@ footer b{{color:#9aa4b2;font-weight:500}}
   </header>
   {summary}
   {cards}
-  {qhrb_html}
   <footer>
     <b>怎么读</b><br>
     · VIX 反映期权市场对未来 30 天波动率的预期，数值越高市场越不安<br>
     · VRP = VIX − 20日已实现波动率。为正说明期权比实际波动贵（市场在买保险），为负则罕见，多出现在恐慌急跌后<br>
     · 期限斜率 = 远月 IV − 近月 IV。为负是常态，代表短期风险定价更高<br>
-    · 品种间比较比看绝对值更有价值：50ETF 是权重蓝筹，中证500／科创50 是高波动成长<br><br>
-    <b>口径</b>：期权价格取上交所披露收盘价（官方方案用买卖价推算）；剔除剩余 ≤ 7 天合约；无风险利率 1.80%；未补虚拟行权价。覆盖上交所 5 个 ETF 期权品种，不含深交所与中金所股指期权。
+    · 品种间比较比看绝对值更有价值：50ETF 是权重蓝筹，中证500 是中盘，创业板与科创50 是高波动成长<br><br>
+    <b>口径</b>：期权价格取上交所披露收盘价（官方方案用买卖价推算）；剔除剩余 ≤ 7 天合约；无风险利率 1.80%；未补虚拟行权价。覆盖上交所 5 个 ETF 期权品种，不含深交所与中金所股指期权。<br>
+    <b>卡片底部的分位</b>有三种，口径不同，别混读：「VIX 分位」＝隐含波动率的历史位置（2015 年至今，仅 50ETF／300ETF 有）；「近半年位置」＝期货日报公布的加权隐含波动率（按成交加权、以平值合约为主，数值系统性偏高）；「波动水平」＝标的已实现波动率 RV（回头看实际波动了多少，不是预期）。
     <div class="sign">VIX-A-SHERRY</div>
   </footer>
 </div>
@@ -384,7 +381,7 @@ def main():
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
-        f.write(build(results, data_date, note, pcts, rvpcts, build_qhrb_html()))
+        f.write(build(results, data_date, note, pcts, rvpcts, load_qhrb()))
     print(f"已生成：{args.out}")
     print(f"数据日期：{data_date}　品种数：{len(results)}　文件大小：{os.path.getsize(args.out)/1024:.1f} KB")
     if note:
