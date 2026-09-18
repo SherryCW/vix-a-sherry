@@ -99,6 +99,10 @@ python3 build_html.py                # 生成手机端报告页面（自包含 H
 
 ## 怎么读这些数
 
+> **完整的指标释义**（每个数字是什么、怎么算出来的、怎么读、什么时候会误导，
+> 含实战读法与速查表）见 [`references/indicator-guide.md`](references/indicator-guide.md)。
+> 下面只是速览。
+
 **VIX 绝对水平**（按 A 股自身历史校准，见下方依据）：
 
 | 区间 | 判读 | 含义 |

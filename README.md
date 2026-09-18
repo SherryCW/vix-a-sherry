@@ -57,6 +57,8 @@ python3 build_html.py            # 生成手机端报告页面
 
 - **这是非官方指数**。编制口径与上交所官方方案存在系统性差异（使用收盘价而非
   买卖价推算、未补虚拟行权价等），对外引用时必须一并说明。
+- **每个指标的含义与读法**——VIX、RV、VRP、期限结构、三种历史分位各自怎么读、
+  什么时候会误导——见 [`references/indicator-guide.md`](references/indicator-guide.md)。
 - 数据源取舍、算法细节、验证记录、全部已知局限，以及**历史数据回补方案**，
   都写在 `references/methodology.md`。
 
@@ -124,6 +126,9 @@ structure chart.
 - **This is not an official index.** The methodology differs systematically from the
   SSE's official scheme (close prices instead of bid/ask midpoints, no virtual
   strikes added, and so on). Any external citation must state this.
+- **What each indicator means and how to read it** — VIX, RV, VRP, term structure,
+  and the three historical-percentile rows, including when each one misleads — is in
+  [`references/indicator-guide.md`](references/indicator-guide.md).
 - Data source trade-offs, algorithm details, validation records, all known
   limitations, and the **historical backfill approach** are documented in
   `references/methodology.md`.
