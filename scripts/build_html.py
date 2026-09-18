@@ -195,9 +195,11 @@ def build(results, data_date, stale_note=None, pcts=None, rvpcts=None, qhrb=None
 
     summary = (f'<div class="summary">'
                f'<div><span class="slabel">波动最高</span>'
-               f'<b style="color:{vix_color(top["vix"])}">{html.escape(top["name"])} {top["vix"]:.2f}</b></div>'
+               f'<b style="color:{vix_color(top["vix"])}">{html.escape(top["name"])}'
+               f'<span class="snum">{top["vix"]:.2f}</span></b></div>'
                f'<div><span class="slabel">波动最低</span>'
-               f'<b style="color:{vix_color(low["vix"])}">{html.escape(low["name"])} {low["vix"]:.2f}</b></div>'
+               f'<b style="color:{vix_color(low["vix"])}">{html.escape(low["name"])}'
+               f'<span class="snum">{low["vix"]:.2f}</span></b></div>'
                f'</div>')
 
     return f'''<!DOCTYPE html>
@@ -231,6 +233,7 @@ h1{{font-size:19px;font-weight:600;letter-spacing:.2px;display:inline-block}}
 .summary{{display:flex;gap:10px;margin-top:14px}}
 .summary>div{{flex:1;background:#171b22;border:1px solid #262c36;border-radius:11px;padding:11px 13px}}
 .slabel{{display:block;font-size:11px;color:#7c8798;margin-bottom:3px}}
+.snum{{margin-left:10px}}
 .summary b{{font-size:14px;font-weight:600}}
 .card{{background:#171b22;border:1px solid #262c36;border-radius:14px;
  padding:15px 15px 12px;margin-top:12px}}
