@@ -44,10 +44,32 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(HERE), "data")
 HISTORY_CSV = os.path.join(DATA_DIR, "vix_history.csv")
 
-# 年化基准：一年有几个交易日。
+# 年化基准：各年度 A 股实际的交易日数。
+#
 # 不能用美股惯例的 252 —— A 股交易日数不同，用错会系统性高估 RV（进而低估 VRP）。
-# 2026 年是 242 天。**每年年底必须更新**，否则次年的 RV / VRP 会有约 2% 的偏差。
-TRADING_DAYS_PER_YEAR = 242
+# 也**不能跨年套用**：2025 年是 243 天、2026 年是 242 天，差 1 天就让 RV 差约 0.2%，
+# 回补历史数据时用错年份会引入偏差。
+#
+# **每年年底补充下一年**（届时需向使用方确认，不要推测）。
+TRADING_DAYS_BY_YEAR = {
+    2025: 243,
+    2026: 242,
+}
+
+
+def trading_days_in_year(d=None):
+    """取某一天所在年度的 A 股交易日数。d 可为 date / ISO 字符串 / None（取当年）。"""
+    if d is None:
+        d = date.today()
+    elif isinstance(d, str):
+        d = _parse_date(d) or date.today()
+    if isinstance(d, datetime):
+        d = d.date()
+    # 未收录的年份回退到表中最大值（当前 243）。仅影响历史重算，误差 < 0.5%；
+    # 若要精确回补更早年份，请把该年数值补进 TRADING_DAYS_BY_YEAR。
+    return TRADING_DAYS_BY_YEAR.get(d.year, max(TRADING_DAYS_BY_YEAR.values()))
+
+
 FETCH_LOG = os.path.join(DATA_DIR, "fetch_log.csv")
 HCVIX_CSV = os.path.join(DATA_DIR, "hcvix_history.csv")
 
@@ -381,7 +403,7 @@ def realized_vol(tx_code, window=20, end_date=None):
         rets = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
         mu = sum(rets) / len(rets)
         var = sum((x - mu) ** 2 for x in rets) / (len(rets) - 1)
-        return math.sqrt(var) * math.sqrt(TRADING_DAYS_PER_YEAR) * 100
+        return math.sqrt(var) * math.sqrt(trading_days_in_year(end_date)) * 100
     except Exception:  # noqa: BLE001
         return None
 
@@ -707,7 +729,7 @@ def rv_history(tx_code, window=20, count=800):
         seg = rets[i - window:i]
         mu = sum(seg) / window
         var = sum((x - mu) ** 2 for x in seg) / (window - 1)
-        rvs.append(math.sqrt(var) * math.sqrt(TRADING_DAYS_PER_YEAR) * 100)
+        rvs.append(math.sqrt(var) * math.sqrt(trading_days_in_year(dates[i])) * 100)
         rd.append(dates[i])
     return rvs, rd
 
