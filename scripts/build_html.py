@@ -45,11 +45,15 @@ def vix_color(v):
 
 
 def term_svg(terms, color):
-    """期限结构迷你折线图（SVG，自适应宽度）"""
+    """期限结构迷你折线图（SVG，自适应宽度）
+
+    底部两行标签：到期天数 + 该期限计算 variance 所用的远期价。
+    远期价必须显示——它是真正参与计算的价格，藏着会让数值无法核对。
+    """
     if len(terms) < 2:
         return ""
-    W, H = 320, 96
-    pad_l, pad_r, pad_t, pad_b = 14, 14, 20, 26
+    W, H = 320, 108
+    pad_l, pad_r, pad_t, pad_b = 42, 42, 20, 40
     ivs = [t["iv"] for t in terms]
     lo, hi = min(ivs), max(ivs)
     span = (hi - lo) or 1.0
@@ -64,14 +68,17 @@ def term_svg(terms, color):
         f'<circle cx="{px(i):.1f}" cy="{py(t["iv"]):.1f}" r="3.5" fill="{color}"/>'
         for i, t in enumerate(terms))
     labels = "".join(
-        f'<text x="{px(i):.1f}" y="{H-8}" text-anchor="middle" font-size="10" fill="#7c8798">{t["days"]}天</text>'
+        f'<text x="{px(i):.1f}" y="{H-24}" text-anchor="middle" font-size="10" fill="#7c8798">{t["days"]}天</text>'
+        for i, t in enumerate(terms))
+    fwds = "".join(
+        f'<text x="{px(i):.1f}" y="{H-8}" text-anchor="middle" font-size="10" fill="#5f6b7d">远期 {t["fwd"]:.4f}</text>'
         for i, t in enumerate(terms))
     vals = "".join(
         f'<text x="{px(i):.1f}" y="{py(t["iv"])-9:.1f}" text-anchor="middle" font-size="10" fill="#9aa4b2">{t["iv"]:.1f}</text>'
         for i, t in enumerate(terms))
     return (f'<svg viewBox="0 0 {W} {H}" width="100%" role="img" aria-label="期限结构">'
             f'<polyline points="{pts}" fill="none" stroke="{color}" stroke-width="2" '
-            f'stroke-linecap="round" stroke-linejoin="round"/>{dots}{vals}{labels}</svg>')
+            f'stroke-linecap="round" stroke-linejoin="round"/>{dots}{vals}{labels}{fwds}</svg>')
 
 
 def card(res, pct=None, rvpct=None, qhrb=None):
