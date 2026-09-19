@@ -43,6 +43,11 @@ from datetime import date, datetime
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(HERE), "data")
 HISTORY_CSV = os.path.join(DATA_DIR, "vix_history.csv")
+
+# 年化基准：一年有几个交易日。
+# 不能用美股惯例的 252 —— A 股交易日数不同，用错会系统性高估 RV（进而低估 VRP）。
+# 2026 年是 242 天。**每年年底必须更新**，否则次年的 RV / VRP 会有约 2% 的偏差。
+TRADING_DAYS_PER_YEAR = 242
 FETCH_LOG = os.path.join(DATA_DIR, "fetch_log.csv")
 HCVIX_CSV = os.path.join(DATA_DIR, "hcvix_history.csv")
 
@@ -356,7 +361,7 @@ def combine_30d(t1, s1, t2, s2, n_days=365.0):
 
 def realized_vol(tx_code, window=20, end_date=None):
     """
-    腾讯日线 -> 年化已实现波动率（对数收益率标准差 × √252）
+    腾讯日线 -> 年化已实现波动率（对数收益率标准差 × √当年实际交易天数）
 
     end_date：只取该日期（含）之前的行情。必须传入 VIX 的数据日期，
     因为两个数据源更新速度不同（腾讯及时、上交所滞后），
@@ -376,7 +381,7 @@ def realized_vol(tx_code, window=20, end_date=None):
         rets = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes))]
         mu = sum(rets) / len(rets)
         var = sum((x - mu) ** 2 for x in rets) / (len(rets) - 1)
-        return math.sqrt(var) * math.sqrt(252) * 100
+        return math.sqrt(var) * math.sqrt(TRADING_DAYS_PER_YEAR) * 100
     except Exception:  # noqa: BLE001
         return None
 
@@ -702,7 +707,7 @@ def rv_history(tx_code, window=20, count=800):
         seg = rets[i - window:i]
         mu = sum(seg) / window
         var = sum((x - mu) ** 2 for x in seg) / (window - 1)
-        rvs.append(math.sqrt(var) * math.sqrt(252) * 100)
+        rvs.append(math.sqrt(var) * math.sqrt(TRADING_DAYS_PER_YEAR) * 100)
         rd.append(dates[i])
     return rvs, rd
 
