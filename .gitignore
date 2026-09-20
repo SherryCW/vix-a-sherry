@@ -21,3 +21,6 @@ output/
 # Skill 安装标记（本地状态，非 skill 内容）
 _skillhub_meta.json
 .redskill-installed
+
+# 定时任务在工作目录里留下的运行记录
+.workbuddy/
